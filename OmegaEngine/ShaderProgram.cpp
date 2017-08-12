@@ -2,6 +2,7 @@
 #include "OpenGL.h"
 #include "glm/gtc/type_ptr.hpp"
 #include <stdexcept>
+#include <iostream>
 
 namespace omega {
 
@@ -29,6 +30,7 @@ void ShaderProgram::compileShader(stringp source, int idIndex)
 	{
 		char log[2048];
 		glGetShaderInfoLog(shadersIds[idIndex], 2048, &status, log);
+		std::cerr << log << std::endl;
 		throw std::runtime_error(string(log));
 	}
 }

@@ -10,8 +10,8 @@ class Source
 	friend Engine;
 private:
 	// Pipeline 1: opaque meshes
-	static const std::string cleanGBufferVert;
-	static const std::string cleanGBufferFrag;
+	static const std::string FullViewportVert;
+	static const std::string ClearBuffersFrag;
 	static const std::string OpaqueToGBufferVert;
 	static const std::string OpaqueToGBufferFrag;
 	static const std::string GBufferToColorBufferVert;
@@ -20,7 +20,7 @@ private:
 private:
 	// SSBO base sizes
 	static size_t SizeofGBufferFragment;
-	static size_t LLBufferSizeFactor;
+	static size_t LLDataBufferSizeFactor;
 	static size_t SizeofLinkedListFragment;
 };
 

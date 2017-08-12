@@ -26,14 +26,16 @@ private:
 	static std::function<void(double x, double y)> mouseMoveCallback;
 	static std::function<void(int button, int action)> mouseClickCallbck;
 	static std::function<void(double x, double y)> mouseScrollCallback;
+	static vec3 clearColor;
 	static RenderList *renderList;
 	static GraphicNode *scene;
 	static float MaxAnisotropy;
 	static ShaderProgram *activeProgram;
+	static ShaderProgram *clearProgram;
 	static ShaderProgram *opaqueProgram;
 	static SSBO *gBuffer;
-	static SSBO *colorBuffer;
-	static SSBO *llBuffer;
+	static SSBO *llHeadBuffer;
+	static SSBO *llDataBuffer;
 private:
 	Engine();
 	static void render();

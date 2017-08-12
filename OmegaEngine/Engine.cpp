@@ -21,14 +21,16 @@ std::function<void(int,int)> Engine::keyboardCallback;
 std::function<void(double,double)> Engine::mouseMoveCallback;
 std::function<void(int,int)> Engine::mouseClickCallbck;
 std::function<void(double,double)> Engine::mouseScrollCallback;
+vec3 Engine::clearColor;
 RenderList *Engine::renderList;
 GraphicNode *Engine::scene;
 float Engine::MaxAnisotropy;
 ShaderProgram *Engine::activeProgram;
+ShaderProgram *Engine::clearProgram;
 ShaderProgram *Engine::opaqueProgram;
 SSBO *Engine::gBuffer = nullptr;
-SSBO *Engine::colorBuffer = nullptr;
-SSBO *Engine::llBuffer = nullptr;
+SSBO *Engine::llHeadBuffer = nullptr;
+SSBO *Engine::llDataBuffer = nullptr;
 
 Engine::Engine() {
 }
@@ -90,7 +92,7 @@ void Engine::init(int width, int height, stringp name, bool fullscreen)
 	glDepthFunc(GL_LEQUAL);
 	glDepthRange(0, 1);
 	glClearDepth(1);
-	glClearColor(0, 0, 0, 1);
+	setClearColor(vec3(0, 0, 0));
 	if (GLEW_EXT_texture_filter_anisotropic) {
 		glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &Engine::MaxAnisotropy);
 	}
@@ -116,6 +118,7 @@ void Engine::init(int width, int height, stringp name, bool fullscreen)
 
 	// Compile shader programs
 	activeProgram = nullptr;
+	clearProgram = ShaderProgram::fromSource(Source::FullViewportVert, Source::ClearBuffersFrag);
 	opaqueProgram = ShaderProgram::fromSource(Source::OpaqueToGBufferVert, Source::OpaqueToGBufferFrag);
 
 	// SSBOs size depends on the FB size (which is in pixels)
@@ -127,24 +130,25 @@ void Engine::init(int width, int height, stringp name, bool fullscreen)
 void Engine::buildSSBOs()
 {
 	deleteSSBOs();
-	// The GBuffer is used to store fragment data for deferred rendering
+	// The GBuffer is used to store fragment data for deferred rendering and compute the final solid color
 	gBuffer = new SSBO(framebufferWidth * framebufferHeight * Source::SizeofGBufferFragment, 0, GL_DYNAMIC_COPY);
-	// The ColorBuffer is used to store the final color of the solid pipeline until blending
-	colorBuffer = new SSBO(framebufferWidth * framebufferHeight * sizeof(vec3), 1, GL_STREAM_COPY);
-	// The LinkedListBuffer holds the linked lists of transparent fragments and is 4x the size of the framebuffer
-	llBuffer = new SSBO(Source::LLBufferSizeFactor * framebufferWidth * framebufferHeight * Source::SizeofLinkedListFragment, 2, GL_DYNAMIC_COPY);
+	// The LinkedListsHeadsBuffer holds an atomic reference to the first node of the pixel's linked list
+	llHeadBuffer = new SSBO(framebufferWidth * framebufferHeight * sizeof(int), 1, GL_DYNAMIC_COPY);
+	// The LinkedListsDataBuffer holds the linked lists of transparent fragments and is 4x the size of the framebuffer
+	llDataBuffer = new SSBO(Source::LLDataBufferSizeFactor * framebufferWidth * framebufferHeight * Source::SizeofLinkedListFragment, 2, GL_DYNAMIC_COPY);
 }
 
 void Engine::deleteSSBOs() {
 	delete gBuffer;
 	gBuffer = nullptr;
-	delete colorBuffer;
-	colorBuffer = nullptr;
-	delete llBuffer;
-	llBuffer = nullptr;
+	delete llHeadBuffer;
+	llHeadBuffer = nullptr;
+	delete llDataBuffer;
+	llDataBuffer = nullptr;
 }
 
 void Engine::setClearColor(vec3p color) {
+	clearColor = color;
 	glClearColor(color.r, color.g, color.b, 1.f);
 }
 
@@ -216,8 +220,15 @@ void Engine::mainLoop()
 
 void Engine::render()
 {
+	// Clear relevant buffers
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+	gBuffer->bind();
+	llHeadBuffer->bind();
+	activateProgram(clearProgram);
+	activeProgram->setValue("width", framebufferWidth);
+	activeProgram->setVector("clearColor", clearColor);
+	drawFullViewportSquare();
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
 	if(scene != nullptr)
 	{
@@ -231,6 +242,7 @@ void Engine::render()
 		auto projectionMatrix = getProjectionMatrix();
 
 		// Render opaque meshes
+		glEnable(GL_DEPTH_TEST);
 		activateProgram(opaqueProgram);
 		for (auto mesh : renderList->opaqueMeshes)
 		{
