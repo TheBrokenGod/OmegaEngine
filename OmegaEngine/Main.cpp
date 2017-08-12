@@ -1,9 +1,8 @@
-#define GLM_FORCE_RADIANS
 #include "Engine.h"
 #include "Importer.h"
-#include <iostream>
 #include "glm/gtx/string_cast.hpp"
 #include "glm/gtc/matrix_inverse.hpp"
+#include <iostream>
 
 using namespace omega;
 
@@ -28,6 +27,13 @@ static void mouseClickCallback(int button, int action)
 
 static void mouseScrollCallback(double xOff, double yOff) {
 	std::cout << "Scroll of " << xOff << " " << yOff << std::endl;
+}
+
+static void setCallbacks() {
+	//Engine::setCursorMode(GLFW_CURSOR_DISABLED);
+	Engine::setOnMouseMove(mouseMoveCallback);
+	Engine::setOnMouseClick(mouseClickCallback);
+	Engine::setOnMouseScroll(mouseScrollCallback);
 }
 
 static void printNode(GraphicNode *node, mat4p transform, int depth)
@@ -59,17 +65,13 @@ static void printNode(GraphicNode *node, mat4p transform, int depth)
 
 int main(int argc, char **argv)
 {
-	//auto screenSize = Engine::getScreenSize();
 	Engine::init(1280, 800, "OpenGL 4.3", false);
+	Engine::setClearColor(vec3(0.1f));
 	auto scene = Importer::loadScene(argv[1]);
 	scene->forEach(printNode);
 	scene->find<Camera>("Camera")->enabled = true;
 	Engine::setScene(scene);
 	Engine::setOnKeyboardEvent(keyboardCallback);
-	//Engine::setCursorMode(GLFW_CURSOR_DISABLED);
-	//Engine::setOnMouseMove(mouseMoveCallback);
-	//Engine::setOnMouseClick(mouseClickCallback);
-	//Engine::setOnMouseScroll(mouseScrollCallback);
 	Engine::mainLoop();
 	return 0;
 }

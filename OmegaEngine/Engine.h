@@ -29,6 +29,7 @@ private:
 	static RenderList *renderList;
 	static GraphicNode *scene;
 	static float MaxAnisotropy;
+	static ShaderProgram *activeProgram;
 	static ShaderProgram *opaqueProgram;
 	static SSBO *gBuffer;
 	static SSBO *colorBuffer;
@@ -46,9 +47,12 @@ private:
 	static void buildSSBOs();
 	static void deleteSSBOs();
 	static mat4 getProjectionMatrix();
+	static void drawFullViewportSquare();
+	static void activateProgram(ShaderProgram *program);
 public:
 	static std::pair<int,int> getScreenSize();
 	static void init(int width, int height, stringp name, bool fullscreen);
+	static void setClearColor(vec3p color);
 	static void setCursorMode(int glfwCursorMode);
 	static void setOnKeyboardEvent(std::function<void(int glfwKey, int glfwAction)> callback);
 	static void setOnMouseMove(std::function<void(double xPos, double yPos)> callback);

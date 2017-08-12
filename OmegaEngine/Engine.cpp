@@ -24,6 +24,7 @@ std::function<void(double,double)> Engine::mouseScrollCallback;
 RenderList *Engine::renderList;
 GraphicNode *Engine::scene;
 float Engine::MaxAnisotropy;
+ShaderProgram *Engine::activeProgram;
 ShaderProgram *Engine::opaqueProgram;
 SSBO *Engine::gBuffer = nullptr;
 SSBO *Engine::colorBuffer = nullptr;
@@ -114,6 +115,7 @@ void Engine::init(int width, int height, stringp name, bool fullscreen)
 	glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(vec2), square, GL_STATIC_DRAW);
 
 	// Compile shader programs
+	activeProgram = nullptr;
 	opaqueProgram = ShaderProgram::fromSource(Source::OpaqueToGBufferVert, Source::OpaqueToGBufferFrag);
 
 	// SSBOs size depends on the FB size (which is in pixels)
@@ -140,6 +142,10 @@ void Engine::deleteSSBOs() {
 	colorBuffer = nullptr;
 	delete llBuffer;
 	llBuffer = nullptr;
+}
+
+void Engine::setClearColor(vec3p color) {
+	glClearColor(color.r, color.g, color.b, 1.f);
 }
 
 void Engine::privKeyboardCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -212,6 +218,7 @@ void Engine::render()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+
 	if(scene != nullptr)
 	{
 		renderList = new RenderList();
@@ -224,14 +231,14 @@ void Engine::render()
 		auto projectionMatrix = getProjectionMatrix();
 
 		// Render opaque meshes
-		opaqueProgram->use();
+		activateProgram(opaqueProgram);
 		for (auto mesh : renderList->opaqueMeshes)
 		{
 			mat4 modelvMatrix = renderList->cameraMatrix * mesh.second;
 			mat3 normalMatrix = glm::inverseTranspose(mat3(modelvMatrix));
 			mat4 renderMatrix = projectionMatrix * modelvMatrix;
-			opaqueProgram->setMatrix("renderMatrix", renderMatrix);
-			opaqueProgram->setMatrix("normalMatrix", normalMatrix);
+			activeProgram->setMatrix("renderMatrix", renderMatrix);
+			activeProgram->setMatrix("normalMatrix", normalMatrix);
 			mesh.first->render();
 		}
 
@@ -239,6 +246,22 @@ void Engine::render()
 	}
 
     glfwSwapBuffers(window);
+}
+
+void Engine::activateProgram(ShaderProgram *program) {
+	activeProgram = program;
+	program->use();
+}
+
+void Engine::drawFullViewportSquare()
+{
+	glDisable(GL_DEPTH_TEST);
+	glBindBuffer(GL_ARRAY_BUFFER, canvasBuffer);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+	glEnableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(2);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
 mat4 Engine::getProjectionMatrix() {
