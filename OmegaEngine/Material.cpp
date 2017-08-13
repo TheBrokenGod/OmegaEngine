@@ -24,15 +24,6 @@ Material::~Material() {
 }
 
 void Material::render() {
-	if (texture->transparent == false)
-	{
-		// TODO
-		//Engine::program->setVector("material.ambient", ambient);
-		//Engine::program->setVector("material.diffuse", diffuse);
-		//Engine::program->setVector("material.specular", specular);
-		//Engine::program->setVector("material.emissive", emissive);
-		//Engine::program->setValue("material.shininess", shininess);
-	}
 }
 
 }

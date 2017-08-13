@@ -19,15 +19,7 @@ GraphicNode* Importer::import()
 {
 	// Set flags and read scene
 	importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE|aiPrimitiveType_POINT);
-	scene = importer.ReadFile(
-		path,
-		aiProcess_Triangulate |
-		aiProcess_SortByPType |
-		aiProcess_GenNormals |
-		aiProcess_RemoveRedundantMaterials |
-		aiProcess_OptimizeMeshes |
-		aiProcess_ImproveCacheLocality
-	);
+	scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_SortByPType | aiProcess_RemoveRedundantMaterials);
 	if (scene == nullptr) {
 		std::cerr << importer.GetErrorString() << std::endl;
 		throw new std::runtime_error(importer.GetErrorString());

@@ -33,6 +33,7 @@ private:
 	static ShaderProgram *activeProgram;
 	static ShaderProgram *clearProgram;
 	static ShaderProgram *opaqueProgram;
+	static ShaderProgram *lightingProgram;
 	static SSBO *gBuffer;
 	static SSBO *llHeadBuffer;
 	static SSBO *llDataBuffer;

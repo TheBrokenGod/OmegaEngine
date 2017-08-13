@@ -26,9 +26,6 @@ Mesh::~Mesh() {
 
 void Mesh::render()
 {
-	// Set material uniforms
-	material->render();
-
 	// Bind texture
 	material->texture->render();
 

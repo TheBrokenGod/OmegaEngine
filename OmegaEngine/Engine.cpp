@@ -28,6 +28,7 @@ float Engine::MaxAnisotropy;
 ShaderProgram *Engine::activeProgram;
 ShaderProgram *Engine::clearProgram;
 ShaderProgram *Engine::opaqueProgram;
+ShaderProgram *Engine::lightingProgram;
 SSBO *Engine::gBuffer = nullptr;
 SSBO *Engine::llHeadBuffer = nullptr;
 SSBO *Engine::llDataBuffer = nullptr;
@@ -119,7 +120,9 @@ void Engine::init(int width, int height, stringp name, bool fullscreen)
 	// Compile shader programs
 	activeProgram = nullptr;
 	clearProgram = ShaderProgram::fromSource(Source::FullViewportVert, Source::ClearBuffersFrag);
+	// BROKEN the depth test happens after the fragment shader executes
 	opaqueProgram = ShaderProgram::fromSource(Source::OpaqueToGBufferVert, Source::OpaqueToGBufferFrag);
+	lightingProgram = ShaderProgram::fromSource(Source::FullViewportVert, Source::ApplyLightingFrag);
 
 	// SSBOs size depends on the FB size (which is in pixels)
 	glfwGetFramebufferSize(window, &Engine::framebufferWidth, &Engine::framebufferHeight);
@@ -131,11 +134,11 @@ void Engine::buildSSBOs()
 {
 	deleteSSBOs();
 	// The GBuffer is used to store fragment data for deferred rendering and compute the final solid color
-	gBuffer = new SSBO(framebufferWidth * framebufferHeight * Source::SizeofGBufferFragment, 0, GL_DYNAMIC_COPY);
+	gBuffer = new SSBO(framebufferWidth * framebufferHeight * Source::SizeofAlignedGBufferFragment, 0, GL_DYNAMIC_COPY);
 	// The LinkedListsHeadsBuffer holds an atomic reference to the first node of the pixel's linked list
 	llHeadBuffer = new SSBO(framebufferWidth * framebufferHeight * sizeof(int), 1, GL_DYNAMIC_COPY);
 	// The LinkedListsDataBuffer holds the linked lists of transparent fragments and is 4x the size of the framebuffer
-	llDataBuffer = new SSBO(Source::LLDataBufferSizeFactor * framebufferWidth * framebufferHeight * Source::SizeofLinkedListFragment, 2, GL_DYNAMIC_COPY);
+	//llDataBuffer = new SSBO(Source::LLDataBufferSizeFactor * framebufferWidth * framebufferHeight * Source::SizeofLinkedListFragment, 2, GL_DYNAMIC_COPY);
 }
 
 void Engine::deleteSSBOs() {
@@ -250,10 +253,19 @@ void Engine::render()
 			mat3 normalMatrix = glm::inverseTranspose(mat3(modelvMatrix));
 			mat4 renderMatrix = projectionMatrix * modelvMatrix;
 			activeProgram->setMatrix("renderMatrix", renderMatrix);
+			activeProgram->setMatrix("modelvMatrix", modelvMatrix);
 			activeProgram->setMatrix("normalMatrix", normalMatrix);
+			activeProgram->setValue("width", framebufferWidth);
+			gBuffer->bind();
 			mesh.first->render();
 		}
+		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
+		// Calculate lighting
+		activateProgram(lightingProgram);
+		activeProgram->setValue("width", framebufferWidth);
+		gBuffer->bind();
+		drawFullViewportSquare();
 	    delete renderList;
 	}
 
