@@ -13,49 +13,29 @@ namespace omega {
 		}
 	)";
 
-	const std::string Source::ClearBuffersFrag = R"(
+	const std::string Source::ClearBufferFrag = R"(
 		#version 430 core
 
 		layout(origin_upper_left, pixel_center_integer) in vec4 gl_FragCoord;
 
-		struct GBufferFragment {
-			vec3 position;
-			vec3 normal;
-			vec3 texel;
-			vec3 outputColor;
-			uint materialId;
-		};
-		layout(std430, binding=0) buffer GBuffer
-		{
-			GBufferFragment gFragments[];
-		};
-
-		layout(std430, binding=1) buffer LLsHeadsBuffer
+		layout(std430, binding=0) buffer LLsHeadsBuffer
 		{
 			int linkedListsHeads[];
 		};
 
 		uniform int width;
-		uniform vec3 clearColor;
 
 		int getPixelBufferIndex()
 		{
 			return int(gl_FragCoord.y * width + gl_FragCoord.x);
 		}
 
-		out vec3 color;
-
 		void main()
 		{
+			// Index based on pixel coords
 			int index = getPixelBufferIndex();
 
-			// Null normal means no fragment
-			gFragments[index].normal = vec3(0, 0, 0);
-
-			// Output color is used for final blending
-			gFragments[index].outputColor = clearColor;
-
-			// -1 means no linked list
+			// -1 means no fragments list
 			linkedListsHeads[index] = -1;
 
 			// Don't touch backbuffer
@@ -63,7 +43,7 @@ namespace omega {
 		}
 	)";
 
-	const std::string Source::OpaqueToGBufferVert = R"(
+	const std::string Source::RenderToListsVert = R"(
 		#version 430 core
 
 		layout(location = 0) in vec3 vertexPosition;
@@ -74,47 +54,53 @@ namespace omega {
 		uniform mat4 modelvMatrix;
 		uniform mat3 normalMatrix;
 
-		out vec3 position;
 		out vec3 normal;
 		out vec2 texCoord;
 
 		void main()
 		{
 			gl_Position = renderMatrix * vec4(vertexPosition, 1.0);
-			position = (modelvMatrix * vec4(vertexPosition, 1.0)).xyz;
 			normal = normalMatrix * vertexNormal;
 			texCoord = vertexTexCoord;
 		}
 	)";
 
-	const std::string Source::OpaqueToGBufferFrag = R"(
+	const std::string Source::RenderToListsFrag = R"(
 		#version 430 core
 
 		layout(origin_upper_left, pixel_center_integer) in vec4 gl_FragCoord;
 
-		in vec3 position;
+		layout(binding=0) uniform atomic_uint nodeIndex;
+		
+		layout(std430, binding=0) buffer LLsHeadsBuffer
+		{
+			int listsHeads[];
+		};
+
+		struct FragmentNode {
+			vec4 color;
+			float depth;
+			int meshId;
+			int nextNode;
+		};
+		layout(std140, binding=1) buffer LLsNodesBuffer
+		{
+			FragmentNode listsNodes[];
+		};
+
 		in vec3 normal;
 		in vec2 texCoord;
 
-
-		struct GBufferFragment {
-			vec3 position;
-			vec3 normal;
-			vec3 texel;
-			vec3 outputColor;
-			uint materialId;
-		};
-		layout(std430, binding=0) buffer GBuffer
-		{
-			GBufferFragment gFragments[];
-		};
-
-		uniform sampler2D sampler;
 		uniform int width;
-		uniform int materialId;
-
-		// TODO remove
-		out vec3 color;
+		uniform sampler2D sampler;
+		uniform int meshId;
+		uniform struct Material {
+			vec3 ambient;
+			vec3 diffuse;
+			vec3 specular;
+			vec3 emissive;
+			float shininess;
+		} material;
 
 		int getPixelBufferIndex()
 		{
@@ -123,38 +109,44 @@ namespace omega {
 
 		void main()
 		{
-			GBufferFragment fragment;
-			fragment.position = position;
-			fragment.normal = normalize(normal);
-			fragment.materialId = materialId;
-			fragment.texel = texture(sampler, texCoord).rgb;
-			fragment.outputColor = vec3(0, 0, 0);
-			gFragments[getPixelBufferIndex()] = fragment;
+			// Get unique index
+			int index = int(atomicCounterIncrement(nodeIndex));
 
-			// TODO remove
-			//color = texture(sampler, texCoord).rgb;
-			discard;
+			// Write fragment data
+			listsNodes[index].color = texture(sampler, texCoord);
+			listsNodes[index].depth = gl_FragCoord.z;
+			listsNodes[index].meshId = meshId;
+			
+			// Insert into pixel's linked list
+			int pixelIndex = getPixelBufferIndex();			
+			int nextNode = atomicExchange(listsHeads[pixelIndex], index);
+			listsNodes[index].nextNode = nextNode;
 		}
 	)";
 
-	const std::string Source::ApplyLightingFrag = R"(
+	const std::string Source::SortAndBlendFrag = R"(
 		#version 430 core
 
 		layout(origin_upper_left, pixel_center_integer) in vec4 gl_FragCoord;
-
-		struct GBufferFragment {
-			vec3 position;
-			vec3 normal;
-			vec3 texel;
-			vec3 outputColor;
-			uint materialId;
-		};
-		layout(std430, binding=0) buffer GBuffer
+		
+		layout(std430, binding=0) buffer LLsHeadsBuffer
 		{
-			GBufferFragment gFragments[];
+			int listsHeads[];
+		};
+
+		struct FragmentNode {
+			vec4 color;
+			float depth;
+			int meshId;
+			int nextNode;
+		};
+		layout(std140, binding=1) buffer LLsNodesBuffer
+		{
+			FragmentNode listsNodes[];
 		};
 
 		uniform int width;
+		uniform vec3 clearColor;
 
 		out vec3 color;
 
@@ -165,36 +157,76 @@ namespace omega {
 
 		void main()
 		{
-			int index = getPixelBufferIndex();
+			int listBegin = listsHeads[getPixelBufferIndex()];
+			vec3 outputColor = clearColor;
 
-			if(length(gFragments[index].normal) > 0)
+			if(listBegin != -1)
 			{
-				gFragments[index].outputColor = gFragments[index].texel;
+				// Sort linked list using bubble sort
+				bool swapped;
+				do
+				{
+					// Start at list head
+					swapped = false;
+					int previousNode = listBegin;
+					int currentNode = listsNodes[listBegin].nextNode;
+
+					while(currentNode != -1)
+					{
+						// Furthest first
+						float previousDepth = listsNodes[previousNode].depth;
+						float currentDepth = listsNodes[currentNode].depth;
+
+						// TODO fix crash on nVidia
+						if(previousDepth < currentDepth)
+						{
+							swapped = true;
+							FragmentNode temp;
+							temp.color = listsNodes[currentNode].color;
+							temp.depth = currentDepth;
+							temp.meshId = listsNodes[currentNode].meshId;
+							listsNodes[currentNode].color = listsNodes[previousNode].color;
+							listsNodes[currentNode].depth = previousDepth;
+							listsNodes[currentNode].meshId = listsNodes[previousNode].meshId;
+							listsNodes[previousNode].color = temp.color;
+							listsNodes[previousNode].depth = temp.depth;
+							listsNodes[previousNode].meshId = temp.meshId;
+						}
+						previousNode = currentNode;
+						currentNode = listsNodes[currentNode].nextNode;					
+					}
+				}
+				while(swapped);
 			}
-			
-			//discard;
-			color = gFragments[index].outputColor;
+
+			// Blend back to front
+			int currentNode = listBegin;
+			while(currentNode != -1)
+			{	
+				vec4 fragColor = listsNodes[currentNode].color;
+				float a = fragColor.a;
+				outputColor = a * fragColor.rgb + (1-a) * outputColor;
+				currentNode = listsNodes[currentNode].nextNode;
+			}
+
+			// Write to bb
+			color = outputColor;
 		}
 	)";
 
-	struct AlignedGBufferFragment {
-		vec4 position;
-		vec4 normal;
-		vec4 texel;
-		vec4 outputColor;
-		vec4 others;
-	};
+	// Probably more than one fragment per pixel
+	size_t Source::FragmentsBufferSizeFactor = 4;
 
-	size_t Source::SizeofAlignedGBufferFragment = sizeof(struct AlignedGBufferFragment);
-
-	size_t Source::LLDataBufferSizeFactor = 4;
-
-	// TODO alignment
-	struct LinkedListFragment {
-		float color[4];
+	// Alignment is 4N
+	struct FragmentNodeAlignedStd140 {
+		vec4 color;
 		float depth;
-		int previousNode;
+		int meshId;
+		int nextNode;
+		int _alignement;
 	};
+	size_t Source::SizeofFragmentNodeStd140 = sizeof(struct FragmentNodeAlignedStd140);
 
-	size_t Source::SizeofLinkedListFragment = sizeof(struct LinkedListFragment);
+	// Alignment is N
+	size_t Source::SizeofLinkedListHeadStd430 = sizeof(int);
 }

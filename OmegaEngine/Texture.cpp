@@ -20,7 +20,7 @@ Texture::Texture(FIBITMAP *bitmap, unsigned width, unsigned height) :
 	if (Engine::MaxAnisotropy > 0) {
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, Engine::MaxAnisotropy);
 	}
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGB, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, (GLvoid*)FreeImage_GetBits(bitmap));
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, (GLvoid*)FreeImage_GetBits(bitmap));
 	glGenerateMipmap(GL_TEXTURE_2D);
 	FreeImage_Unload(bitmap);
 }

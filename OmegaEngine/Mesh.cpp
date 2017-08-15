@@ -26,6 +26,9 @@ Mesh::~Mesh() {
 
 void Mesh::render()
 {
+	// Set material
+	material->render();
+
 	// Bind texture
 	material->texture->render();
 

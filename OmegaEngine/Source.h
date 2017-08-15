@@ -10,18 +10,14 @@ class Source
 	friend Engine;
 private:
 	static const std::string FullViewportVert;
-	// Pipeline 1: opaque meshes
-	static const std::string ClearBuffersFrag;
-	static const std::string OpaqueToGBufferVert;
-	static const std::string OpaqueToGBufferFrag;
-	static const std::string ApplyLightingFrag;
-	// Pipeline 2: transparent meshes and blend
-	// TODO
+	static const std::string ClearBufferFrag;
+	static const std::string RenderToListsVert;
+	static const std::string RenderToListsFrag;
+	static const std::string SortAndBlendFrag;
 private:
-	// SSBO base sizes
-	static size_t SizeofAlignedGBufferFragment;
-	static size_t LLDataBufferSizeFactor;
-	static size_t SizeofLinkedListFragment;
+	static size_t SizeofFragmentNodeStd140;
+	static size_t FragmentsBufferSizeFactor;
+	static size_t SizeofLinkedListHeadStd430;
 };
 
 }

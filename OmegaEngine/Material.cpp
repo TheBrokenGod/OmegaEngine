@@ -24,6 +24,11 @@ Material::~Material() {
 }
 
 void Material::render() {
+	Engine::activeProgram->setVector("material.ambient", ambient);
+	Engine::activeProgram->setVector("material.diffuse", diffuse);
+	Engine::activeProgram->setVector("material.specular", specular);
+	Engine::activeProgram->setVector("material.emissive", emissive);
+	Engine::activeProgram->setValue("material.shininess", shininess);
 }
 
 }

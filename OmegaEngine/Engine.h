@@ -7,7 +7,9 @@
 #include "Texture.h"
 #include "Material.h"
 #include "SSBO.h"
+#include "AtomicCounter.h"
 #include <functional>
+#include <vector>
 
 namespace omega {
 
@@ -22,6 +24,7 @@ private:
 	static int framebufferHeight;
 	static GLuint vertexArrayId;
 	static GLuint canvasBuffer;
+	static std::function<void(float deltaTime)> mainLoopCallback;
 	static std::function<void(int key, int action)> keyboardCallback;
 	static std::function<void(double x, double y)> mouseMoveCallback;
 	static std::function<void(int button, int action)> mouseClickCallbck;
@@ -32,14 +35,16 @@ private:
 	static float MaxAnisotropy;
 	static ShaderProgram *activeProgram;
 	static ShaderProgram *clearProgram;
-	static ShaderProgram *opaqueProgram;
-	static ShaderProgram *lightingProgram;
-	static SSBO *gBuffer;
-	static SSBO *llHeadBuffer;
-	static SSBO *llDataBuffer;
+	static ShaderProgram *renderProgram;
+	static ShaderProgram *blendProgram;
+	static AtomicCounter *atomicNodeIndex;
+	static SSBO *llHeadsBuffer;
+	static SSBO *llFragmentsBuffer;
+	static double previousTime;
 private:
 	Engine();
 	static void render();
+	static void renderMeshes(const std::vector<std::pair<Mesh*, mat4>>& meshes, mat4p projectionMatrix);
 	static void privResizeCallback(GLFWwindow *window, int newWidth, int newHeight);
 	static void privFbResizeCallback(GLFWwindow *window, int newWidthPixels, int newHeightPixels);
 	static void privKeyboardCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
@@ -52,11 +57,14 @@ private:
 	static mat4 getProjectionMatrix();
 	static void drawFullViewportSquare();
 	static void activateProgram(ShaderProgram *program);
+	static float updateTime();
 public:
 	static std::pair<int,int> getScreenSize();
 	static void init(int width, int height, stringp name, bool fullscreen);
+	static vec3 colorFromRGB(int red, int green, int blue);
 	static void setClearColor(vec3p color);
 	static void setCursorMode(int glfwCursorMode);
+	static void setMainLoopCallback(std::function<void(float)> callback);
 	static void setOnKeyboardEvent(std::function<void(int glfwKey, int glfwAction)> callback);
 	static void setOnMouseMove(std::function<void(double xPos, double yPos)> callback);
 	static void setOnMouseClick(std::function<void(int glfwButton, int glfwAction)> callback);

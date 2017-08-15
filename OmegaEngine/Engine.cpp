@@ -17,6 +17,7 @@ int Engine::framebufferWidth;
 int Engine::framebufferHeight;
 GLuint Engine::vertexArrayId;
 GLuint Engine::canvasBuffer;
+std::function<void(float)> Engine::mainLoopCallback;
 std::function<void(int,int)> Engine::keyboardCallback;
 std::function<void(double,double)> Engine::mouseMoveCallback;
 std::function<void(int,int)> Engine::mouseClickCallbck;
@@ -27,11 +28,12 @@ GraphicNode *Engine::scene;
 float Engine::MaxAnisotropy;
 ShaderProgram *Engine::activeProgram;
 ShaderProgram *Engine::clearProgram;
-ShaderProgram *Engine::opaqueProgram;
-ShaderProgram *Engine::lightingProgram;
-SSBO *Engine::gBuffer = nullptr;
-SSBO *Engine::llHeadBuffer = nullptr;
-SSBO *Engine::llDataBuffer = nullptr;
+ShaderProgram *Engine::renderProgram;
+ShaderProgram *Engine::blendProgram;
+AtomicCounter *Engine::atomicNodeIndex;
+SSBO *Engine::llFragmentsBuffer = nullptr;
+SSBO *Engine::llHeadsBuffer = nullptr;
+double Engine::previousTime;
 
 Engine::Engine() {
 }
@@ -78,6 +80,7 @@ void Engine::init(int width, int height, stringp name, bool fullscreen)
 	glfwSetMouseButtonCallback(window, Engine::privMouseClickCallback);
 	glfwSetScrollCallback(window, Engine::privScrollCallback);
 	glfwMakeContextCurrent(window);
+	glfwSwapInterval(0);
 
 	// Setup OpenGL
 	glewExperimental = GL_TRUE;
@@ -119,35 +122,36 @@ void Engine::init(int width, int height, stringp name, bool fullscreen)
 
 	// Compile shader programs
 	activeProgram = nullptr;
-	clearProgram = ShaderProgram::fromSource(Source::FullViewportVert, Source::ClearBuffersFrag);
-	// BROKEN the depth test happens after the fragment shader executes
-	opaqueProgram = ShaderProgram::fromSource(Source::OpaqueToGBufferVert, Source::OpaqueToGBufferFrag);
-	lightingProgram = ShaderProgram::fromSource(Source::FullViewportVert, Source::ApplyLightingFrag);
-
+	clearProgram = ShaderProgram::fromSource(Source::FullViewportVert, Source::ClearBufferFrag);
+	renderProgram = ShaderProgram::fromSource(Source::RenderToListsVert, Source::RenderToListsFrag);
+	blendProgram = ShaderProgram::fromSource(Source::FullViewportVert, Source::SortAndBlendFrag);
+	
 	// SSBOs size depends on the FB size (which is in pixels)
 	glfwGetFramebufferSize(window, &Engine::framebufferWidth, &Engine::framebufferHeight);
+	atomicNodeIndex = new AtomicCounter(GL_DYNAMIC_COPY);
 	buildSSBOs();
 	scene = nullptr;
+	previousTime = -1;
 }
 
 void Engine::buildSSBOs()
 {
 	deleteSSBOs();
-	// The GBuffer is used to store fragment data for deferred rendering and compute the final solid color
-	gBuffer = new SSBO(framebufferWidth * framebufferHeight * Source::SizeofAlignedGBufferFragment, 0, GL_DYNAMIC_COPY);
-	// The LinkedListsHeadsBuffer holds an atomic reference to the first node of the pixel's linked list
-	llHeadBuffer = new SSBO(framebufferWidth * framebufferHeight * sizeof(int), 1, GL_DYNAMIC_COPY);
-	// The LinkedListsDataBuffer holds the linked lists of transparent fragments and is 4x the size of the framebuffer
-	//llDataBuffer = new SSBO(Source::LLDataBufferSizeFactor * framebufferWidth * framebufferHeight * Source::SizeofLinkedListFragment, 2, GL_DYNAMIC_COPY);
+	// The LinkedListsHeadsBuffer holds an atomic reference to the first node of a particular pixel linked list
+	llHeadsBuffer = new SSBO(framebufferWidth * framebufferHeight * Source::SizeofLinkedListHeadStd430, 0, GL_DYNAMIC_COPY);
+	// The LinkedListsFragmentsBuffer is used to store lists of fragments color for later sorting and blending
+	llFragmentsBuffer = new SSBO(Source::FragmentsBufferSizeFactor * framebufferWidth * framebufferHeight * Source::SizeofFragmentNodeStd140, 1, GL_DYNAMIC_COPY);
 }
 
 void Engine::deleteSSBOs() {
-	delete gBuffer;
-	gBuffer = nullptr;
-	delete llHeadBuffer;
-	llHeadBuffer = nullptr;
-	delete llDataBuffer;
-	llDataBuffer = nullptr;
+	delete llFragmentsBuffer;
+	llFragmentsBuffer = nullptr;
+	delete llHeadsBuffer;
+	llHeadsBuffer = nullptr;
+}
+
+vec3 Engine::colorFromRGB(int red, int green, int blue) {
+	return vec3(red / 255.f, green / 255.f, blue / 255.f);
 }
 
 void Engine::setClearColor(vec3p color) {
@@ -191,6 +195,10 @@ void Engine::setCursorMode(int glfwCursorMode) {
 	glfwSetInputMode(window, GLFW_CURSOR, glfwCursorMode);
 }
 
+void Engine::setMainLoopCallback(std::function<void(float)> callback) {
+	mainLoopCallback = callback;
+}
+
 void Engine::setOnKeyboardEvent(std::function<void(int,int)> callback) {
 	keyboardCallback = callback;
 }
@@ -216,6 +224,11 @@ void Engine::mainLoop()
 	do {
 		render();
 	    glfwPollEvents();
+		// TODO review
+		auto deltaTime = updateTime();
+		if (deltaTime > 0 && mainLoopCallback) {
+			mainLoopCallback(deltaTime);
+		}
 	}
 	while(!glfwWindowShouldClose(window));
 	dispose();
@@ -225,11 +238,10 @@ void Engine::render()
 {
 	// Clear relevant buffers
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	gBuffer->bind();
-	llHeadBuffer->bind();
+	atomicNodeIndex->bindAndReset();
 	activateProgram(clearProgram);
+	llHeadsBuffer->bind();
 	activeProgram->setValue("width", framebufferWidth);
-	activeProgram->setVector("clearColor", clearColor);
 	drawFullViewportSquare();
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
@@ -244,27 +256,30 @@ void Engine::render()
 		});
 		auto projectionMatrix = getProjectionMatrix();
 
-		// Render opaque meshes
+		// TODO perform depth prepass
 		glEnable(GL_DEPTH_TEST);
-		activateProgram(opaqueProgram);
-		for (auto mesh : renderList->opaqueMeshes)
-		{
-			mat4 modelvMatrix = renderList->cameraMatrix * mesh.second;
-			mat3 normalMatrix = glm::inverseTranspose(mat3(modelvMatrix));
-			mat4 renderMatrix = projectionMatrix * modelvMatrix;
-			activeProgram->setMatrix("renderMatrix", renderMatrix);
-			activeProgram->setMatrix("modelvMatrix", modelvMatrix);
-			activeProgram->setMatrix("normalMatrix", normalMatrix);
-			activeProgram->setValue("width", framebufferWidth);
-			gBuffer->bind();
-			mesh.first->render();
-		}
+
+		// Render transparent meshes
+		glDepthMask(GL_FALSE);
+		glDisable(GL_CULL_FACE);
+		activateProgram(renderProgram);
+		llHeadsBuffer->bind();
+		llFragmentsBuffer->bind();
+		renderMeshes(renderList->transparentMeshes, projectionMatrix);
+
+		// Render opaque meshes
+		glDepthMask(GL_TRUE);
+		glEnable(GL_CULL_FACE);
+		renderMeshes(renderList->opaqueMeshes, projectionMatrix);
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-		// Calculate lighting
-		activateProgram(lightingProgram);
+		// Sort and blend
+		glDisable(GL_DEPTH_TEST);
+		activateProgram(blendProgram);
+		llHeadsBuffer->bind();
+		llFragmentsBuffer->bind();
 		activeProgram->setValue("width", framebufferWidth);
-		gBuffer->bind();
+		activeProgram->setVector("clearColor", clearColor);
 		drawFullViewportSquare();
 	    delete renderList;
 	}
@@ -272,9 +287,36 @@ void Engine::render()
     glfwSwapBuffers(window);
 }
 
+void Engine::renderMeshes(const std::vector<std::pair<Mesh*, mat4>>& meshes, mat4p projectionMatrix)
+{
+	for (auto mesh : meshes)
+	{
+		activeProgram->setValue("meshId", (int)mesh.first->meshId);
+		mat4 modelvMatrix = renderList->cameraMatrix * mesh.second;
+		mat3 normalMatrix = glm::inverseTranspose(mat3(modelvMatrix));
+		mat4 renderMatrix = projectionMatrix * modelvMatrix;
+		activeProgram->setMatrix("renderMatrix", renderMatrix);
+		activeProgram->setMatrix("modelvMatrix", modelvMatrix);
+		activeProgram->setMatrix("normalMatrix", normalMatrix);
+		activeProgram->setValue("width", framebufferWidth);
+		mesh.first->render();
+	}
+}
+
 void Engine::activateProgram(ShaderProgram *program) {
 	activeProgram = program;
 	program->use();
+}
+
+float Engine::updateTime() {
+	if (previousTime < 0) {
+		previousTime = 0;
+		return 0;
+	}
+	auto currentTime = glfwGetTime();
+	auto deltaTime = currentTime - previousTime;
+	previousTime = currentTime;
+	return (float)deltaTime;
 }
 
 void Engine::drawFullViewportSquare()
@@ -323,7 +365,10 @@ void Engine::closeWindow() {
 void Engine::dispose() {
 	delete scene;
 	deleteSSBOs();
-	delete opaqueProgram;
+	delete atomicNodeIndex;
+	delete blendProgram;
+	delete renderProgram;
+	delete clearProgram;
 	glDeleteBuffers(1, &canvasBuffer);
 	glDeleteVertexArrays(1, &vertexArrayId);
 	glfwDestroyWindow(window);

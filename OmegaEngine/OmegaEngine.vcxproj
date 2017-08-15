@@ -147,6 +147,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="AtomicCounter.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Engine.h" />
     <ClInclude Include="GraphicNode.h" />
@@ -164,6 +165,7 @@
     <ClInclude Include="Types.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AtomicCounter.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Engine.cpp" />
     <ClCompile Include="GraphicNode.cpp" />

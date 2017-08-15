@@ -2,38 +2,50 @@
 #include "Importer.h"
 #include "glm/gtx/string_cast.hpp"
 #include "glm/gtc/matrix_inverse.hpp"
+#include "glm/gtc/matrix_transform.hpp"
 #include <iostream>
 
 using namespace omega;
 
-static void keyboardCallback(int key, int action)
+static GraphicNode *scene;
+const static float MoveSpeed = 80;
+const static float PositionBoundary = 240;
+static float currentPosition = 0;
+static bool movingRight = true;
+
+static void moveObjects(float deltaTime, int sign)
 {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-    	Engine::closeWindow();
-    }
+	currentPosition += sign * MoveSpeed * deltaTime;
+	scene->find<Mesh>("TechCube")->matrix *= glm::translate(mat4(1), vec3(sign * MoveSpeed * deltaTime, 0.f, 0.f));
+	scene->find<Mesh>("EnergySphere")->matrix *= glm::translate(mat4(1), vec3(-sign * MoveSpeed * deltaTime, 0.f, 0.f));
 }
 
-static void mouseMoveCallback(double x, double y)
+static void animateObjects(float deltaTime)
 {
-	std::cout << "mouse at [" << x << ";" << y << "]" << std::endl;
-}
-
-static void mouseClickCallback(int button, int action)
-{
-	if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-		std::cout << "mouse left clicked" << std::endl;
+	if (movingRight)
+	{
+		if (currentPosition < PositionBoundary)
+		{
+			moveObjects(deltaTime, 1);
+		}
+		else
+		{
+			movingRight = false;
+			animateObjects(deltaTime);
+		}
 	}
-}
-
-static void mouseScrollCallback(double xOff, double yOff) {
-	std::cout << "Scroll of " << xOff << " " << yOff << std::endl;
-}
-
-static void setCallbacks() {
-	//Engine::setCursorMode(GLFW_CURSOR_DISABLED);
-	Engine::setOnMouseMove(mouseMoveCallback);
-	Engine::setOnMouseClick(mouseClickCallback);
-	Engine::setOnMouseScroll(mouseScrollCallback);
+	else
+	{
+		if (currentPosition > -PositionBoundary)
+		{
+			moveObjects(deltaTime, -1);
+		}
+		else
+		{
+			movingRight = true;
+			animateObjects(deltaTime);
+		}
+	}
 }
 
 static void printNode(GraphicNode *node, mat4p transform, int depth)
@@ -63,14 +75,23 @@ static void printNode(GraphicNode *node, mat4p transform, int depth)
 	std::cout << std::endl;
 }
 
+static void keyboardCallback(int key, int action)
+{
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+		Engine::closeWindow();
+	}
+}
+
 int main(int argc, char **argv)
 {
-	Engine::init(1280, 800, "OpenGL 4.3", false);
-	Engine::setClearColor(vec3(0.1f));
-	auto scene = Importer::loadScene(argv[1]);
+	auto screenSize = Engine::getScreenSize();
+	auto title = "OIT with linked lists (OpenGL 4.3)";
+	Engine::init(screenSize.first, screenSize.second, title, true);
+	scene = Importer::loadScene(argv[1]);
 	scene->forEach(printNode);
 	scene->find<Camera>("Camera")->enabled = true;
 	Engine::setScene(scene);
+	Engine::setMainLoopCallback(animateObjects);
 	Engine::setOnKeyboardEvent(keyboardCallback);
 	Engine::mainLoop();
 	return 0;
