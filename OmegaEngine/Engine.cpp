@@ -50,9 +50,6 @@ std::pair<int,int> Engine::getScreenSize()
 
 void Engine::init(int width, int height, stringp name, bool fullscreen)
 {
-#ifdef FREEIMAGE_LIB
-	FreeImage_Initialise();
-#endif
 	if(!glfwInit()) {
 		throw std::runtime_error("Failed to initialise GLFW");
 	}
@@ -373,9 +370,6 @@ void Engine::dispose() {
 	glDeleteVertexArrays(1, &vertexArrayId);
 	glfwDestroyWindow(window);
 	glfwTerminate();
-#ifdef FREEIMAGE_LIB
-	FreeImage_DeInitialise();
-#endif
 }
 
 }
