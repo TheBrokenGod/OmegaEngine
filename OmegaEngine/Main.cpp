@@ -8,42 +8,46 @@
 using namespace omega;
 
 static GraphicNode *scene;
-const static float MoveSpeed = 80;
+const static float MoveSpeed = 50;
 const static float PositionBoundary = 240;
 static float currentPosition = 0;
 static bool movingRight = true;
 
-static void moveObjects(float deltaTime, int sign)
+static void moveObjects(int sign)
 {
-	currentPosition += sign * MoveSpeed * deltaTime;
-	scene->find<Mesh>("TechCube")->matrix *= glm::translate(mat4(1), vec3(sign * MoveSpeed * deltaTime, 0.f, 0.f));
-	scene->find<Mesh>("EnergySphere")->matrix *= glm::translate(mat4(1), vec3(-sign * MoveSpeed * deltaTime, 0.f, 0.f));
+	currentPosition += sign * MoveSpeed * Engine::deltaTime();
+	mat4 matrix = glm::translate(mat4(1), vec3(sign * MoveSpeed * Engine::deltaTime(), 0.f, 0.f));
+	matrix = matrix * glm::rotate(mat4(1), Engine::deltaTime(), vec3(1, 0, 0));
+	scene->find<Mesh>("TechCube")->matrix *= matrix;
+	matrix = glm::translate(mat4(1), vec3(-sign * MoveSpeed * Engine::deltaTime(), 0.f, 0.f));
+	matrix = matrix * glm::rotate(mat4(1), Engine::deltaTime(), vec3(1, 0, 0));
+	scene->find<Mesh>("EnergySphere")->matrix *= matrix;
 }
 
-static void animateObjects(float deltaTime)
+static void animateObjects()
 {
 	if (movingRight)
 	{
 		if (currentPosition < PositionBoundary)
 		{
-			moveObjects(deltaTime, 1);
+			moveObjects(1);
 		}
 		else
 		{
 			movingRight = false;
-			animateObjects(deltaTime);
+			animateObjects();
 		}
 	}
 	else
 	{
 		if (currentPosition > -PositionBoundary)
 		{
-			moveObjects(deltaTime, -1);
+			moveObjects(-1);
 		}
 		else
 		{
 			movingRight = true;
-			animateObjects(deltaTime);
+			animateObjects();
 		}
 	}
 }

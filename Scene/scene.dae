@@ -4,8 +4,8 @@
         <contributor>
             <authoring_tool>CINEMA4D 18.011 COLLADA Exporter</authoring_tool>
         </contributor>
-        <created>2017-08-15T22:27:21Z</created>
-        <modified>2017-08-15T22:27:21Z</modified>
+        <created>2017-08-16T14:51:39Z</created>
+        <modified>2017-08-16T14:51:39Z</modified>
         <unit name="meter"/>
         <up_axis>Y_UP</up_axis>
     </asset>
@@ -26,10 +26,10 @@
             <init_from>red_glass.png</init_from>
         </image>
         <image id="ID28">
-            <init_from>blue_energy.png</init_from>
+            <init_from>gold.png</init_from>
         </image>
         <image id="ID33">
-            <init_from>technology.jpg</init_from>
+            <init_from>technology.png</init_from>
         </image>
     </library_images>
     <library_effects>
@@ -239,7 +239,7 @@
         <material id="ID21" name="RedGlass">
             <instance_effect url="#ID22"/>
         </material>
-        <material id="ID26" name="Energy">
+        <material id="ID26" name="Sphere">
             <instance_effect url="#ID27"/>
         </material>
         <material id="ID31" name="HighTech">

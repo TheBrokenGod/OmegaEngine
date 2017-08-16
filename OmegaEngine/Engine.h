@@ -24,7 +24,7 @@ private:
 	static int framebufferHeight;
 	static GLuint vertexArrayId;
 	static GLuint canvasBuffer;
-	static std::function<void(float deltaTime)> mainLoopCallback;
+	static std::function<void()> mainLoopCallback;
 	static std::function<void(int key, int action)> keyboardCallback;
 	static std::function<void(double x, double y)> mouseMoveCallback;
 	static std::function<void(int button, int action)> mouseClickCallbck;
@@ -41,6 +41,7 @@ private:
 	static SSBO *llHeadsBuffer;
 	static SSBO *llFragmentsBuffer;
 	static double previousTime;
+	static float _deltaTime;
 private:
 	Engine();
 	static void render();
@@ -57,14 +58,14 @@ private:
 	static mat4 getProjectionMatrix();
 	static void drawFullViewportSquare();
 	static void activateProgram(ShaderProgram *program);
-	static float updateTime();
+	static void calcTime();
 public:
 	static std::pair<int,int> getScreenSize();
 	static void init(int width, int height, stringp name, bool fullscreen);
 	static vec3 colorFromRGB(int red, int green, int blue);
 	static void setClearColor(vec3p color);
 	static void setCursorMode(int glfwCursorMode);
-	static void setMainLoopCallback(std::function<void(float)> callback);
+	static void setMainLoopCallback(std::function<void()> callback);
 	static void setOnKeyboardEvent(std::function<void(int glfwKey, int glfwAction)> callback);
 	static void setOnMouseMove(std::function<void(double xPos, double yPos)> callback);
 	static void setOnMouseClick(std::function<void(int glfwButton, int glfwAction)> callback);
@@ -74,6 +75,7 @@ public:
 	static int getWidth();
 	static int getHeight();
 	static void mainLoop();
+	static float deltaTime();
 	static void closeWindow();
 	static void dispose();
 };

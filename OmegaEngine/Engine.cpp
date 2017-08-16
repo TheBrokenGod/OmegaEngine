@@ -17,7 +17,7 @@ int Engine::framebufferWidth;
 int Engine::framebufferHeight;
 GLuint Engine::vertexArrayId;
 GLuint Engine::canvasBuffer;
-std::function<void(float)> Engine::mainLoopCallback;
+std::function<void()> Engine::mainLoopCallback;
 std::function<void(int,int)> Engine::keyboardCallback;
 std::function<void(double,double)> Engine::mouseMoveCallback;
 std::function<void(int,int)> Engine::mouseClickCallbck;
@@ -34,6 +34,7 @@ AtomicCounter *Engine::atomicNodeIndex;
 SSBO *Engine::llFragmentsBuffer = nullptr;
 SSBO *Engine::llHeadsBuffer = nullptr;
 double Engine::previousTime;
+float Engine::_deltaTime;
 
 Engine::Engine() {
 }
@@ -131,7 +132,7 @@ void Engine::init(int width, int height, stringp name, bool fullscreen)
 	atomicNodeIndex = new AtomicCounter(GL_DYNAMIC_COPY);
 	buildSSBOs();
 	scene = nullptr;
-	previousTime = -1;
+	previousTime = 0;
 }
 
 void Engine::buildSSBOs()
@@ -195,7 +196,7 @@ void Engine::setCursorMode(int glfwCursorMode) {
 	glfwSetInputMode(window, GLFW_CURSOR, glfwCursorMode);
 }
 
-void Engine::setMainLoopCallback(std::function<void(float)> callback) {
+void Engine::setMainLoopCallback(std::function<void()> callback) {
 	mainLoopCallback = callback;
 }
 
@@ -221,13 +222,13 @@ void Engine::setScene(GraphicNode *scene) {
 
 void Engine::mainLoop()
 {
+	glfwSetTime(0);
 	do {
 		render();
+		calcTime();
 	    glfwPollEvents();
-		// TODO review
-		auto deltaTime = updateTime();
-		if (deltaTime > 0 && mainLoopCallback) {
-			mainLoopCallback(deltaTime);
+		if (mainLoopCallback) {
+			mainLoopCallback();
 		}
 	}
 	while(!glfwWindowShouldClose(window));
@@ -308,17 +309,6 @@ void Engine::activateProgram(ShaderProgram *program) {
 	program->use();
 }
 
-float Engine::updateTime() {
-	if (previousTime < 0) {
-		previousTime = 0;
-		return 0;
-	}
-	auto currentTime = glfwGetTime();
-	auto deltaTime = currentTime - previousTime;
-	previousTime = currentTime;
-	return (float)deltaTime;
-}
-
 void Engine::drawFullViewportSquare()
 {
 	glDisable(GL_DEPTH_TEST);
@@ -328,6 +318,16 @@ void Engine::drawFullViewportSquare()
 	glDisableVertexAttribArray(1);
 	glDisableVertexAttribArray(2);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+}
+
+void Engine::calcTime() {
+	double currentTime = glfwGetTime();
+	_deltaTime = float(currentTime - previousTime);
+	previousTime = currentTime;
+}
+
+float Engine::deltaTime() {
+	return _deltaTime;
 }
 
 mat4 Engine::getProjectionMatrix() {
