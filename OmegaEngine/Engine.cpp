@@ -101,7 +101,6 @@ void Engine::init(int width, int height, stringp name, bool fullscreen)
 	else {
 		MaxAnisotropy = 0;
 	}
-	glEnable(GL_TEXTURE_2D);
 #ifdef GLDEBUG
 	glDebugMessageCallback((GLDEBUGPROC)Engine::debugCallback, nullptr);
 	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);

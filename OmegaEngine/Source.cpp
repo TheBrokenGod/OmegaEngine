@@ -183,13 +183,14 @@ namespace omega {
 							swapped = true;
 							FragmentNode temp;
 							temp.color = listsNodes[currentNode].color;
-							temp.depth = currentDepth;
 							temp.meshId = listsNodes[currentNode].meshId;
+							
 							listsNodes[currentNode].color = listsNodes[previousNode].color;
 							listsNodes[currentNode].depth = previousDepth;
 							listsNodes[currentNode].meshId = listsNodes[previousNode].meshId;
+
 							listsNodes[previousNode].color = temp.color;
-							listsNodes[previousNode].depth = temp.depth;
+							listsNodes[previousNode].depth = currentDepth;
 							listsNodes[previousNode].meshId = temp.meshId;
 						}
 						previousNode = currentNode;
