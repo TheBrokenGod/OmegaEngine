@@ -159,8 +159,8 @@ namespace omega {
 		{
 			int currentNode = listBegin;
 
-			// Selection sort
-			while(currentNode != - 1)
+			// Perform selection sort
+			while(currentNode != - 1 && listsNodes[currentNode].nextNode != -1)
 			{
 				float currentDepth = listsNodes[currentNode].depth;
 				int nextNode = listsNodes[currentNode].nextNode;
