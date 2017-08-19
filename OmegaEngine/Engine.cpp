@@ -253,11 +253,8 @@ void Engine::render()
 		});
 		auto projectionMatrix = getProjectionMatrix();
 
-		// TODO perform depth prepass
-		glEnable(GL_DEPTH_TEST);
-
 		// Render transparent meshes
-		glDepthMask(GL_FALSE);
+		glDisable(GL_DEPTH_TEST);
 		glDisable(GL_CULL_FACE);
 		activateProgram(renderProgram);
 		llHeadsBuffer->bind();
@@ -265,7 +262,7 @@ void Engine::render()
 		renderMeshes(renderList->transparentMeshes, projectionMatrix);
 
 		// Render opaque meshes
-		glDepthMask(GL_TRUE);
+		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
 		renderMeshes(renderList->opaqueMeshes, projectionMatrix);
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
@@ -278,6 +275,7 @@ void Engine::render()
 		activeProgram->setValue("width", framebufferWidth);
 		activeProgram->setVector("clearColor", clearColor);
 		drawFullViewportSquare();
+
 	    delete renderList;
 	}
 

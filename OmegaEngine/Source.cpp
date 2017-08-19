@@ -155,53 +155,58 @@ namespace omega {
 			return int(gl_FragCoord.y * width + gl_FragCoord.x);
 		}
 
-		void main()
+		void sort(int listBegin)
 		{
-			int listBegin = listsHeads[getPixelBufferIndex()];
+			int currentNode = listBegin;
+
+			// Selection sort
+			while(currentNode != - 1)
+			{
+				float currentDepth = listsNodes[currentNode].depth;
+				int nextNode = listsNodes[currentNode].nextNode;
+
+				int furthestNode = currentNode;
+				float furthestDepth = currentDepth;
+
+				// Find the furthest
+				while(nextNode != -1)
+				{
+					float nextDepth = listsNodes[nextNode].depth;
+					if(furthestDepth < nextDepth)
+					{
+						furthestNode = nextNode;
+						furthestDepth = nextDepth;
+					}
+					nextNode = listsNodes[nextNode].nextNode;
+				}
+
+				// Swap values if needed
+				if(currentNode != furthestNode)
+				{
+					FragmentNode temp;
+					temp.color = listsNodes[currentNode].color;
+					temp.meshId = listsNodes[currentNode].meshId;
+
+					listsNodes[currentNode].color = listsNodes[furthestNode].color;
+					listsNodes[currentNode].depth = furthestDepth;
+					listsNodes[currentNode].meshId = listsNodes[furthestNode].meshId;
+
+					listsNodes[furthestNode].color = temp.color;
+					listsNodes[furthestNode].depth = currentDepth;
+					listsNodes[furthestNode].meshId = temp.meshId;
+				}
+
+				// Current node completed
+				currentNode = listsNodes[currentNode].nextNode;
+			}
+		}
+
+		vec3 blend(int listBegin)
+		{
+			int currentNode = listBegin;
 			vec3 outputColor = clearColor;
 
-			if(listBegin != -1)
-			{
-				// Sort linked list using bubble sort
-				bool swapped;
-				do
-				{
-					// Start at list head
-					swapped = false;
-					int previousNode = listBegin;
-					int currentNode = listsNodes[listBegin].nextNode;
-
-					while(currentNode != -1)
-					{
-						// Furthest first
-						float previousDepth = listsNodes[previousNode].depth;
-						float currentDepth = listsNodes[currentNode].depth;
-
-						// TODO fix crash on nVidia
-						if(previousDepth < currentDepth)
-						{
-							swapped = true;
-							FragmentNode temp;
-							temp.color = listsNodes[currentNode].color;
-							temp.meshId = listsNodes[currentNode].meshId;
-							
-							listsNodes[currentNode].color = listsNodes[previousNode].color;
-							listsNodes[currentNode].depth = previousDepth;
-							listsNodes[currentNode].meshId = listsNodes[previousNode].meshId;
-
-							listsNodes[previousNode].color = temp.color;
-							listsNodes[previousNode].depth = currentDepth;
-							listsNodes[previousNode].meshId = temp.meshId;
-						}
-						previousNode = currentNode;
-						currentNode = listsNodes[currentNode].nextNode;					
-					}
-				}
-				while(swapped);
-			}
-
-			// Blend back to front
-			int currentNode = listBegin;
+			// Back to front
 			while(currentNode != -1)
 			{	
 				vec4 fragColor = listsNodes[currentNode].color;
@@ -210,8 +215,14 @@ namespace omega {
 				currentNode = listsNodes[currentNode].nextNode;
 			}
 
-			// Write to bb
-			color = outputColor;
+			return outputColor;
+		}
+
+		void main()
+		{
+			int listBegin = listsHeads[getPixelBufferIndex()];
+			sort(listBegin);
+			color = blend(listBegin);
 		}
 	)";
 
