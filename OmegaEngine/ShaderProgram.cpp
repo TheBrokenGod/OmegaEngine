@@ -6,7 +6,7 @@
 
 namespace omega {
 
-ShaderProgram::ShaderProgram(stringp vertex, stringp fragment) : GraphicObject(),
+ShaderProgram::ShaderProgram(stringp vertex, stringp fragment) :
 	programId(0)
 {
 	compileShader(vertex, 0);
@@ -69,10 +69,6 @@ ShaderProgram::~ShaderProgram() {
 
 void ShaderProgram::use() {
 	glUseProgram(programId);
-}
-
-void ShaderProgram::render() {
-	use();
 }
 
 int ShaderProgram::getUniformLocation(stringp name)

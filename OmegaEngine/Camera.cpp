@@ -14,9 +14,6 @@ Camera::Camera(vec3p position, vec3p lookAt, vec3p upward) :
 Camera::~Camera() {
 }
 
-void Camera::render() {
-}
-
 mat4 Camera::getCameraMatrix(mat4p transform)
 {
 	vec3 pos = vec3(transform * vec4(position, 1));

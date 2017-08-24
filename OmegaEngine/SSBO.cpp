@@ -22,8 +22,4 @@ void SSBO::bind() {
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindingIndex, ssboId);
 }
 
-void SSBO::render() {
-	bind();
-}
-
 }

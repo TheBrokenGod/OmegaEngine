@@ -16,7 +16,6 @@ public:
 	mat4 matrix;
 	GraphicNode(mat4p matrix = mat4(1));
 	~GraphicNode();
-	void render();
 	void attach(GraphicNode *child);
 	void detachFromParent();
 	template<class G> G* find(stringp name)

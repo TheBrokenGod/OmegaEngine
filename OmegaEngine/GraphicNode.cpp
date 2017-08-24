@@ -12,9 +12,6 @@ GraphicNode::~GraphicNode() {
 	}
 }
 
-void GraphicNode::render() {
-}
-
 void GraphicNode::attach(GraphicNode *child) {
 	children.insert(child);
 }

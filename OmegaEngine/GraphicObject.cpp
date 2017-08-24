@@ -8,4 +8,7 @@ GraphicObject::GraphicObject() {
 GraphicObject::~GraphicObject() {
 }
 
+void GraphicObject::render() {
+}
+
 }

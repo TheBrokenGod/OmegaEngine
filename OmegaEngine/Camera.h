@@ -14,7 +14,6 @@ public:
 public:
 	Camera(vec3p position, vec3p lookAt, vec3p upward);
 	~Camera();
-	void render();
 	mat4 getCameraMatrix(mat4p transform);
 };
 

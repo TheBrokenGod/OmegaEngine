@@ -21,10 +21,6 @@ void AtomicCounter::bindAndReset() {
 	glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, bufferId);
 }
 
-void AtomicCounter::render() {
-	bindAndReset();
-}
-
 GLuint AtomicCounter::getValue() {
 	GLuint value;
 	glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, bufferId);

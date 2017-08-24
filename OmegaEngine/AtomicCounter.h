@@ -5,14 +5,13 @@
 
 namespace omega {
 
-class AtomicCounter : public GraphicObject
+class AtomicCounter
 {
 private:
 	GLuint bufferId;
 public:
 	AtomicCounter(GLenum glUsage);
 	~AtomicCounter();
-	void render();
 	void bindAndReset();
 	GLuint getValue();
 };

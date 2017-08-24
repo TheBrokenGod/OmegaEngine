@@ -13,7 +13,7 @@ protected:
 public:
 	string name;
 	virtual ~GraphicObject();
-	virtual void render() = 0;
+	virtual void render();
 };
 
 }

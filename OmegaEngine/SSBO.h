@@ -5,7 +5,7 @@
 
 namespace omega {
 
-class SSBO : public GraphicObject
+class SSBO
 {
 private:
 	GLuint ssboId;
@@ -15,7 +15,6 @@ public:
 	SSBO(size_t sizeInBytes, GLuint bindingIndex, GLenum glUsage, byte *data);
 	~SSBO();
 	void bind();
-	void render();
 };
 
 }

@@ -6,7 +6,7 @@
 
 namespace omega {
 
-class ShaderProgram : public GraphicObject
+class ShaderProgram
 {
 private:
 	GLuint shadersIds[2];
