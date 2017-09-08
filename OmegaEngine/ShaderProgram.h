@@ -22,7 +22,6 @@ public:
 	static ShaderProgram *fromFiles(stringp vertexFile, stringp fragmentFile);
 	~ShaderProgram();
 	void use();
-	void render();
 	void setVector(stringp name, vec3p vector);
 	void setVector(stringp name, vec4p vector);
 	void setMatrix(stringp name, mat3p matrix);

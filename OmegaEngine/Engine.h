@@ -6,8 +6,10 @@
 #include "ShaderProgram.h"
 #include "Texture.h"
 #include "Material.h"
+#include "Importer.h"
 #include "SSBO.h"
 #include "AtomicCounter.h"
+#include "ShaderProgram.h"
 #include <functional>
 #include <vector>
 
@@ -17,6 +19,8 @@ class Engine
 {
 	friend Material;
 	friend Texture;
+	friend Importer;
+	friend ShaderProgram;
 private:
 	static GLFWwindow *window;
 	static int width, height;
@@ -59,6 +63,7 @@ private:
 	static void drawFullViewportSquare();
 	static void activateProgram(ShaderProgram *program);
 	static void calcTime();
+	static void throwRuntimeError(stringp error);
 public:
 	static std::pair<int,int> getScreenSize();
 	static void init(int width, int height, stringp name, bool fullscreen);

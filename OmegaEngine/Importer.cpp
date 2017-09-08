@@ -1,4 +1,5 @@
 #include "Importer.h"
+#include "Engine.h"
 #include "assimp/postprocess.h"
 #include "glm/gtc/matrix_transform.hpp"
 #include <iostream>
@@ -21,8 +22,7 @@ GraphicNode* Importer::import()
 	importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE|aiPrimitiveType_POINT);
 	scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_SortByPType | aiProcess_RemoveRedundantMaterials);
 	if (scene == nullptr) {
-		std::cerr << importer.GetErrorString() << std::endl;
-		throw new std::runtime_error(importer.GetErrorString());
+		Engine::throwRuntimeError(importer.GetErrorString());
 	}
 
 	// Import graph

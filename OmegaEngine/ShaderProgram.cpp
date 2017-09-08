@@ -1,5 +1,5 @@
 #include "ShaderProgram.h"
-#include "OpenGL.h"
+#include "Engine.h"
 #include "glm/gtc/type_ptr.hpp"
 #include <stdexcept>
 #include <iostream>
@@ -31,7 +31,7 @@ void ShaderProgram::compileShader(stringp source, int idIndex)
 		char log[2048];
 		glGetShaderInfoLog(shadersIds[idIndex], 2048, &status, log);
 		std::cerr << log << std::endl;
-		throw std::runtime_error(string(log));
+		Engine::throwRuntimeError(string(log));
 	}
 }
 
@@ -49,7 +49,7 @@ void ShaderProgram::linkProgram() {
 	if (!status)
 	{
 		glGetProgramInfoLog(programId, 2048, &status, log);
-		throw std::runtime_error(string(log));
+		Engine::throwRuntimeError(string(log));
 	}
 
 	glValidateProgram(programId);
@@ -57,7 +57,7 @@ void ShaderProgram::linkProgram() {
 	if (status == false)
 	{
 		glGetProgramInfoLog(programId, 2048, &status, log);
-		throw std::runtime_error(string(log));
+		Engine::throwRuntimeError(string(log));
 	}
 }
 
@@ -86,7 +86,7 @@ ShaderProgram *ShaderProgram::fromSource(stringp vertex, stringp fragment) {
 }
 
 ShaderProgram *ShaderProgram::fromFiles(stringp vertexFile, stringp fragmentFile) {
-	throw std::logic_error("Not yet implemented");
+	Engine::throwRuntimeError("Not yet implemented");
 }
 
 void ShaderProgram::setVector(stringp name, vec3p vector) {

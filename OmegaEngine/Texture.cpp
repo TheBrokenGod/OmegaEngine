@@ -46,7 +46,7 @@ std::shared_ptr<Texture> Texture::build(stringp path)
 	// Load image data from file
 	auto format = FreeImage_GetFileType(path.c_str());
 	if (format == FIF_UNKNOWN) {
-		throw std::runtime_error("FreeImage: error with " + path);
+		Engine::throwRuntimeError("FreeImage: error with " + path);
 	}
 	FIBITMAP *temp = FreeImage_Load(format, path.c_str());
 	FIBITMAP *bitmap = FreeImage_ConvertTo32Bits(temp);

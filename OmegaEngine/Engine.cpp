@@ -42,7 +42,7 @@ Engine::Engine() {
 std::pair<int,int> Engine::getScreenSize()
 {
 	if (!glfwInit()) {
-		throw std::runtime_error("Failed to initialise GLFW");
+		throwRuntimeError("Failed to initialise GLFW");
 	}
     const GLFWvidmode *mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
     return std::make_pair(mode->width, mode->height);
@@ -51,7 +51,7 @@ std::pair<int,int> Engine::getScreenSize()
 void Engine::init(int width, int height, stringp name, bool fullscreen)
 {
 	if(!glfwInit()) {
-		throw std::runtime_error("Failed to initialise GLFW");
+		throwRuntimeError("Failed to initialise GLFW");
 	}
 	// Set context params
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -59,13 +59,15 @@ void Engine::init(int width, int height, stringp name, bool fullscreen)
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
 	glfwWindowHint(GLFW_DEPTH_BITS, 32);
+#ifdef GLDEBUG
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+#endif
 
 	// Create window
 	auto monitor = fullscreen ? glfwGetPrimaryMonitor() : nullptr;
 	window = glfwCreateWindow(width, height, name.c_str(), monitor, nullptr);
 	if(window == nullptr) {
-		throw std::runtime_error("Failed to create GLFW window");
+		throwRuntimeError("Failed to create GLFW window");
 	}
 	Engine::width = width;
 	Engine::height = height;
@@ -83,10 +85,10 @@ void Engine::init(int width, int height, stringp name, bool fullscreen)
 	// Setup OpenGL
 	glewExperimental = GL_TRUE;
 	if (glewInit() != GLEW_OK) {
-		throw std::runtime_error("Failed to initialize GLEW");
+		throwRuntimeError("Failed to initialize GLEW");
 	}
 	if (!GLEW_VERSION_4_3) {
-		throw std::runtime_error("A 4.3 context is required");
+		throwRuntimeError("A 4.3 context is required");
 	}
 	glGenVertexArrays(1, &vertexArrayId);
 	glBindVertexArray(vertexArrayId);
@@ -318,6 +320,11 @@ void Engine::calcTime() {
 	double currentTime = glfwGetTime();
 	_deltaTime = float(currentTime - previousTime);
 	previousTime = currentTime;
+}
+
+void Engine::throwRuntimeError(stringp error) {
+	std::cerr << error << std::endl;
+	throw std::runtime_error(error);
 }
 
 float Engine::deltaTime() {
