@@ -122,7 +122,7 @@ std::shared_ptr<Texture> Importer::loadTexture(stringp name)
 			return texture.second;
 		}
 	}
-	auto texture = Texture::build(this->directory + name);
+	auto texture = Texture::build(this->directory + "textures/" + name);
 	texture->name = name;
 	return texture;
 }

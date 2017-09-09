@@ -91,7 +91,7 @@ int main(int argc, char **argv)
 	//auto screenSize = Engine::getScreenSize();
 	auto title = "OIT with linked lists (OpenGL 4.3)";
 	Engine::init(1152, 648, title, false);
-	scene = Importer::loadScene(argv[1]);
+	scene = Importer::loadScene("../Scene/scene.dae");
 	scene->forEach(printNode);
 	scene->find<Camera>("Camera")->enabled = true;
 	Engine::setScene(scene);
